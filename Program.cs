@@ -11,17 +11,17 @@
 			int blockSize = 992;
 			string fileName = @"c:\temp\readwrite.bin";
 			
-//			if ( File.Exists(fileName))
-//				File.Delete(fileName);
+			if ( File.Exists(fileName))
+				File.Delete(fileName);
 
 			Console.WriteLine("Hello, World!");
 			var rs = new ReadStuff(fileName, blockSize, zoneCancel);
 			var ws = new WriteStuff(fileName, blockSize, zoneCancel);
+			Task.Run(() => { ws.WriteLoopAsync(); });
 			Task.Run(() => { rs.ReadLoopAsync(); });
-//			Task.Run(() => { ws.WriteLoopAsync(); });
 
 			Console.WriteLine("reading");
-			await Task.Delay(10000);
+			await Task.Delay(20000);
 			zoneCancel.Cancel();
 			await Task.Delay(1000);
 			Console.WriteLine("***done***");

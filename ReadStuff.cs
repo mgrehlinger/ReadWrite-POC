@@ -42,8 +42,8 @@ namespace ReadWrite
 			Debug.WriteLine("  ..read block " + blockId);
 			int recordSize = BlockSize + headerSize + hashSize;
 			var header = new byte[2*headerSize];
-			var hash = new byte[hashSize];
-			var payload = new byte[BlockSize];
+			var hash = new byte[2*hashSize];
+			var payload = new byte[2*BlockSize];
 			bool brtn = false;
 
 
@@ -57,14 +57,15 @@ namespace ReadWrite
 				{
 					using (var fs = new FileStream(FileName, FileMode.Open, FileAccess.Read, FileShare.Read))
 					{
-						fs.Position = 0;
-						Debug.WriteLine("  fs Position: " + fs.Position);
-						var headerCnt = fs.Read(header, offset, headerSize);
+						fs.Position = offset;
+						var headerCnt = fs.Read(header, 0, headerSize);
 						offset += headerSize;
-						var hashCnt = fs.Read(hash, offset, hashSize);
+						var hashCnt = fs.Read(hash, 0, hashSize);
 						offset += hashSize;
-						var payloadCnt = fs.Read(payload, offset, BlockSize);
+						var payloadCnt = fs.Read(payload, 0, BlockSize);
 						Debug.WriteLine("  ..Read block: " + blockId);
+						MD5 md5 = MD5.Create();
+						var payloadHash = md5.ComputeHash(payload);
 						brtn = true;
 					}
 				}
