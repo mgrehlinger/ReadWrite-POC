@@ -10,20 +10,30 @@
 			CancellationTokenSource zoneCancel = new(); // Used to exit data handling thread
 			int blockSize = 992;
 			string fileName = @"c:\temp\readwrite.bin";
+			object fileLock = new object();
+
+
 			
 			if ( File.Exists(fileName))
 				File.Delete(fileName);
 
 			Console.WriteLine("Hello, World!");
-			var rs = new ReadStuff(fileName, blockSize, zoneCancel);
-			var ws = new WriteStuff(fileName, blockSize, zoneCancel);
+			var rs = new ReadStuff(fileLock, fileName, blockSize, zoneCancel);
+			var ws = new WriteStuff(fileLock, fileName, blockSize, zoneCancel);
+/*
 			Task.Run(() => { ws.WriteLoopAsync(); });
 			Task.Run(() => { rs.ReadLoopAsync(); });
 
 			Console.WriteLine("reading");
-			await Task.Delay(20000);
+			await Task.Delay(40_000);
 			zoneCancel.Cancel();
 			await Task.Delay(1000);
+*/
+			for ( int i = 0; i < 10;  i++ )
+			{
+				ws.DoWrite(i);
+				rs.DoRead(i);
+			}
 			Console.WriteLine("***done***");
 
 		}

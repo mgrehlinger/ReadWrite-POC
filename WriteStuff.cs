@@ -1,11 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
+﻿using System.Diagnostics;
 using System.Security.Cryptography;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace ReadWrite
 {
@@ -14,11 +8,14 @@ namespace ReadWrite
 		string FileName { get; set; }
 		int BlockSize { get; set; }
 		CancellationTokenSource cancellationToken;
-		internal WriteStuff(string fileName, int blockSize, CancellationTokenSource cancelToken)
+		readonly object fileLock;
+
+		internal WriteStuff(object lockObj, string fileName, int blockSize, CancellationTokenSource cancelToken)
 		{
 			FileName = fileName;
 			BlockSize = blockSize;
 			cancellationToken = cancelToken;
+			fileLock = lockObj;
 		}
 
 		internal async Task WriteLoopAsync()
@@ -31,37 +28,44 @@ namespace ReadWrite
 					Console.WriteLine("Cancel WriteStuff");
 					break;
 				}
-				await doWriteAsync(blockCnt++);
+				bool bSuccess = DoWrite(blockCnt);
+				if (bSuccess) blockCnt++;
+				await Task.Delay(400);
 			}
 		}
 
-		async Task<bool> doWriteAsync(int blockId)
+		internal bool DoWrite(int blockId)
 		{
 			Debug.WriteLine("  ..Write block " + blockId);
 			var payload = buildBlock();
 			var md5 = MD5.Create();
 			var hash = md5.ComputeHash(payload);
-			await Task.Delay(800);
 			byte[] header = new byte[] { 0xDE, 0xAD, 0xBE, 0xEF, 0x00, 0x00, 0x00,0x00,
 										 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-
-			try
+			bool brtn = false;
+			if (Monitor.TryEnter(fileLock))
 			{
-				using (var stream = new FileStream(FileName, FileMode.Append, FileAccess.Write, FileShare.Write))
+				try
 				{
-					stream.Write(header);
-					stream.Write(hash);
-					stream.Write(payload);
-					stream.Flush();
+					using (var stream = new FileStream(FileName, FileMode.Append, FileAccess.Write, FileShare.Write))
+					{
+						stream.Write(header);
+						stream.Write(BitConverter.GetBytes(blockId));
+						stream.Write(hash);
+						stream.Write(payload);
+						stream.Flush();
+					}
+					brtn = true;
 				}
-				return true;
+				catch (IOException ex)
+				{
+					Debug.WriteLine($"Error writing {ex.Message}");
+				}
+//				Monitor.PulseAll(fileLock);
 			}
-			catch (IOException ex)
-			{
-				Debug.WriteLine($"Error writing {ex.Message}");
-
-				return false;
-			}
+			else
+				Debug.WriteLine("WRITE timeout block " + blockId);
+			return brtn;
 		}
 
 		/// <summary>
