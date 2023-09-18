@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Security.Cryptography;
+using static ReadWrite.Program;
 
 namespace ReadWrite
 {
@@ -8,14 +9,12 @@ namespace ReadWrite
 		string FileName { get; set; }
 		int BlockSize { get; set; }
 		CancellationTokenSource cancellationToken;
-		readonly object fileLock;
 
-		internal ReadStuff(object lockObj, string fileName, int blockSize, CancellationTokenSource cancelToken)
+		internal ReadStuff(string fileName, int blockSize, CancellationTokenSource cancelToken)
 		{
 			FileName = fileName;
 			BlockSize = blockSize;
 			cancellationToken = cancelToken;
-			fileLock = lockObj;
 		}
 
 		internal async Task ReadLoopAsync()
@@ -30,7 +29,7 @@ namespace ReadWrite
 				}
 				bool bRead = DoRead(blockCnt);
 				if (bRead) blockCnt++;
-				await Task.Delay(1000);
+				await Task.Delay(120);
 			}
 		}
 
@@ -49,15 +48,14 @@ namespace ReadWrite
 
 			if (File.Exists(FileName))
 			{
-				var fi = new FileInfo(FileName);
-				int offset = blockId * recordSize;
-
-				if (Monitor.TryEnter(fileLock))
+				try
 				{
+					Locker.Rw.AcquireReaderLock((int)Locker.TimeOut);
 					try
 					{
 						using (var fs = new FileStream(FileName, FileMode.Open, FileAccess.Read, FileShare.Read))
 						{
+							int offset = blockId * recordSize;
 							fs.Position = offset;
 							var headerCnt = fs.Read(header, 0, headerSize);
 							offset += headerSize;
@@ -80,10 +78,11 @@ namespace ReadWrite
 					{
 						Debug.WriteLine($"Other Error reading {ex.Message}");
 					}
-//					Monitor.PulseAll(fileLock);
+
 				}
-				else
-					Debug.WriteLine("   ..doReadAsync timeout");
+				finally { Locker.Rw.ReleaseReaderLock(); }
+
+
 			}
 			return brtn;
 		}

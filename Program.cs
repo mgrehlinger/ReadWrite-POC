@@ -1,19 +1,24 @@
-﻿//#define SIMULTANEOUS
+﻿#define SIMULTANEOUS
 
 namespace ReadWrite
 {
 #pragma warning disable CS4014 // don't nag about not awaiting
 	internal class Program
 	{
+		public static class Locker
+		{
+			public static ReaderWriterLock Rw { get; set; }
+			public static int TimeOut { get; set; }
+		}
 
 
 		static async Task Main(string[] args)
 		{
 			CancellationTokenSource zoneCancel = new(); // Used to exit data handling thread
-			int blockSize = 50_000;
+			int blockSize = 500_000;
 			string fileName = @"c:\temp\readwrite.bin";
-			object fileLock = new();
-			ReaderWriterLock rwl = new();
+			Locker.Rw = new ReaderWriterLock();
+			Locker.TimeOut = 200;
 
 
 
@@ -21,8 +26,8 @@ namespace ReadWrite
 				File.Delete(fileName);
 
 			Console.WriteLine("Hello, World!");
-			var rs = new ReadStuff(fileLock, fileName, blockSize, zoneCancel);
-			var ws = new WriteStuff(fileLock, fileName, blockSize, zoneCancel);
+			var rs = new ReadStuff(fileName, blockSize, zoneCancel);
+			var ws = new WriteStuff(fileName, blockSize, zoneCancel);
 
 #if SIMULTANEOUS
 			Task.Run(() => { ws.WriteLoopAsync(); });

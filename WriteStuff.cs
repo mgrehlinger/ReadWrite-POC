@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Security.Cryptography;
+using static ReadWrite.Program;
 
 namespace ReadWrite
 {
@@ -8,14 +9,12 @@ namespace ReadWrite
 		string FileName { get; set; }
 		int BlockSize { get; set; }
 		CancellationTokenSource cancellationToken;
-		readonly object fileLock;
 
-		internal WriteStuff(object lockObj, string fileName, int blockSize, CancellationTokenSource cancelToken)
+		internal WriteStuff(string fileName, int blockSize, CancellationTokenSource cancelToken)
 		{
 			FileName = fileName;
 			BlockSize = blockSize;
 			cancellationToken = cancelToken;
-			fileLock = lockObj;
 		}
 
 		internal async Task WriteLoopAsync()
@@ -30,7 +29,7 @@ namespace ReadWrite
 				}
 				bool bSuccess = DoWrite(blockCnt);
 				if (bSuccess) blockCnt++;
-				await Task.Delay(400);
+				await Task.Delay(100);
 			}
 		}
 
@@ -42,8 +41,9 @@ namespace ReadWrite
 			byte[] header = new byte[] { 0xDE, 0xAD, 0xBE, 0xEF, 0x00, 0x00, 0x00,0x00,
 										 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 			bool brtn = false;
-			if (Monitor.TryEnter(fileLock))
+			try
 			{
+				Locker.Rw.AcquireWriterLock((int)Locker.TimeOut);
 				try
 				{
 					using (var stream = new FileStream(FileName, FileMode.Append, FileAccess.Write, FileShare.Write))
@@ -60,9 +60,12 @@ namespace ReadWrite
 				{
 					Debug.WriteLine($"Error writing {ex.Message}");
 				}
-//				Monitor.PulseAll(fileLock);
 			}
-			Debug.WriteLine("DoWrite: " + blockId + " brtn = " + brtn);
+			finally { Locker.Rw.ReleaseWriterLock(); }
+			if (!brtn)
+			{
+				Debug.WriteLine("DoWrite  FAILED: " + blockId + " brtn = " + brtn);
+			}
 			return brtn;
 		}
 
