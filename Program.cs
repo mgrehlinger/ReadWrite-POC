@@ -8,9 +8,9 @@
 		static async Task Main(string[] args)
 		{
 			CancellationTokenSource zoneCancel = new(); // Used to exit data handling thread
-			int blockSize = 992;
+			int blockSize = 50_000;
 			string fileName = @"c:\temp\readwrite.bin";
-			object fileLock = new object();
+			object fileLock = new();
 
 
 			

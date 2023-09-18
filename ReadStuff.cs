@@ -41,10 +41,10 @@ namespace ReadWrite
 			int blockIdSize = sizeof(int);
 			Debug.WriteLine("  ..Try read block " + blockId);
 			int recordSize = BlockSize + headerSize + blockIdSize + hashSize;
-			var header = new byte[2 * headerSize];
-			var blockBuffer = new byte[2*blockIdSize];
-			var hash = new byte[2 * hashSize];
-			var payload = new byte[2 * BlockSize];
+			var header = new byte[headerSize];
+			var blockBuffer = new byte[blockIdSize];
+			var hash = new byte[hashSize];
+			var payload = new byte[BlockSize];
 			bool brtn = false;
 
 
@@ -70,7 +70,7 @@ namespace ReadWrite
 							var payloadCnt = fs.Read(payload, 0, BlockSize);
 							MD5 md5 = MD5.Create();
 							var payloadHash = md5.ComputeHash(payload);
-							brtn = true;
+							brtn = payloadHash.SequenceEqual(hash);
 						}
 					}
 					catch (IOException ex)
