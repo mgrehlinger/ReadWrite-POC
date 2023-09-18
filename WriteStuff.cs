@@ -36,7 +36,6 @@ namespace ReadWrite
 
 		internal bool DoWrite(int blockId)
 		{
-			Debug.WriteLine("  ..Write block " + blockId);
 			var payload = buildBlock();
 			var md5 = MD5.Create();
 			var hash = md5.ComputeHash(payload);
@@ -63,8 +62,7 @@ namespace ReadWrite
 				}
 //				Monitor.PulseAll(fileLock);
 			}
-			else
-				Debug.WriteLine("WRITE timeout block " + blockId);
+			Debug.WriteLine("DoWrite: " + blockId + " brtn = " + brtn);
 			return brtn;
 		}
 

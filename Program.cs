@@ -1,4 +1,6 @@
-﻿namespace ReadWrite
+﻿//#define SIMULTANEOUS
+
+namespace ReadWrite
 {
 #pragma warning disable CS4014 // don't nag about not awaiting
 	internal class Program
@@ -11,16 +13,18 @@
 			int blockSize = 50_000;
 			string fileName = @"c:\temp\readwrite.bin";
 			object fileLock = new();
+			ReaderWriterLock rwl = new();
 
 
-			
+
 			if ( File.Exists(fileName))
 				File.Delete(fileName);
 
 			Console.WriteLine("Hello, World!");
 			var rs = new ReadStuff(fileLock, fileName, blockSize, zoneCancel);
 			var ws = new WriteStuff(fileLock, fileName, blockSize, zoneCancel);
-/*
+
+#if SIMULTANEOUS
 			Task.Run(() => { ws.WriteLoopAsync(); });
 			Task.Run(() => { rs.ReadLoopAsync(); });
 
@@ -28,12 +32,16 @@
 			await Task.Delay(40_000);
 			zoneCancel.Cancel();
 			await Task.Delay(1000);
-*/
+
+#else
 			for ( int i = 0; i < 10;  i++ )
 			{
 				ws.DoWrite(i);
 				rs.DoRead(i);
 			}
+
+#endif
+
 			Console.WriteLine("***done***");
 
 		}
