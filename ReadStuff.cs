@@ -20,17 +20,22 @@ namespace ReadWrite
 		internal async Task ReadLoopAsync()
 		{
 			int blockCnt = 0;
-			while (true)
+			Debug.WriteLine("Read thread: " + Environment.CurrentManagedThreadId);
+			try
 			{
-				if (cancellationToken.IsCancellationRequested)
+				while (true)
 				{
-					Console.WriteLine("Cancel ReadStuff");
-					break;
+					if (cancellationToken.IsCancellationRequested)
+					{
+						Debug.WriteLine("Cancel ReadStuff with blockCnt " + blockCnt);
+						break;
+					}
+					bool bRead = DoRead(blockCnt);
+					if (bRead) blockCnt++;
+					await Task.Delay(30);
 				}
-				bool bRead = DoRead(blockCnt);
-				if (bRead) blockCnt++;
-				await Task.Delay(120);
 			}
+			catch (Exception ex) { Debug.WriteLine("!!!!!!! Read exception: " + ex.Message); }
 		}
 
 		internal bool DoRead(int blockId)
@@ -67,23 +72,29 @@ namespace ReadWrite
 							MD5 md5 = MD5.Create();
 							var payloadHash = md5.ComputeHash(payload);
 							brtn = payloadHash.SequenceEqual(hash);
-							Debug.WriteLine("DoRead: " + readBlock + " brtn = " + brtn);
 						}
 					}
 					catch (IOException ex)
 					{
-						Debug.WriteLine($"IOException reading {ex.Message}");
+						Debug.WriteLine($"FileStream IOException reading {ex.Message}");
 					}
 					catch (Exception ex)
 					{
-						Debug.WriteLine($"Other Error reading {ex.Message}");
+						Debug.WriteLine($"FileStream Other Error reading {ex.Message}");
 					}
-
 				}
-				finally { Locker.Rw.ReleaseReaderLock(); }
-
-
+				catch (Exception ex)
+				{
+					Debug.WriteLine("DoRead() Locker exception: " + ex.GetType() + " " + ex.Message);
+				}
+				finally
+				{
+					if ( Locker.Rw.IsReaderLockHeld)
+						Locker.Rw.ReleaseReaderLock();
+				}
 			}
+			if ( !brtn ) { Debug.WriteLine("DoRead() failed: " + blockId ); }
+		
 			return brtn;
 		}
 

@@ -20,17 +20,22 @@ namespace ReadWrite
 		internal async Task WriteLoopAsync()
 		{
 			int blockCnt = 0;
-			while (true)
+			Debug.WriteLine("Write thread: " + Environment.CurrentManagedThreadId);
+			try
 			{
-				if (cancellationToken.IsCancellationRequested)
+				while (true)
 				{
-					Console.WriteLine("Cancel WriteStuff");
-					break;
+					if (cancellationToken.IsCancellationRequested)
+					{
+						Debug.WriteLine("Cancel WriteStuff with blockCnt: " + blockCnt);
+						break;
+					}
+					bool bSuccess = DoWrite(blockCnt);
+					if (bSuccess) blockCnt++;
+					await Task.Delay(20);
 				}
-				bool bSuccess = DoWrite(blockCnt);
-				if (bSuccess) blockCnt++;
-				await Task.Delay(100);
 			}
+			catch (Exception ex) { Debug.WriteLine(ex); }
 		}
 
 		internal bool DoWrite(int blockId)
